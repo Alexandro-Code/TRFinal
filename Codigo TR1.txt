@@ -1,0 +1,92 @@
+install.packages("readr")
+install.packages("ggplot2")
+install.packages("dplyr")
+install.packages("caTools")
+
+library(readr)
+library(ggplot2)
+library(dplyr)
+library(caTools)
+
+# 1. Adquisición de Datos
+datos <- read_csv("propiedades.csv")
+head(datos)
+
+# 2. Preprocesamiento de Datos
+datos <- na.omit(datos)
+datos <- datos[!duplicated(datos), ]
+head(datos)
+
+# 3. Análisis de Datos Exploratorio (EDA)
+# Visualización de la distribución de precios con un gráfico de densidad
+ggplot(datos, aes(x = Precio_venta)) +
+  geom_density(fill = "lightblue") +
+  labs(title = "Distribución de Precios de Bienes Raíces", 
+       x = "Precio", y = "Densidad") +
+  theme_minimal()
+
+# Supongamos que tienes una columna 'estado' que indica el estado de la propiedad
+ggplot(datos, aes(x = Estado, y = Precio_venta, fill = Estado)) +
+  geom_boxplot(outlier.colour = "red", outlier.shape = 16, outlier.size = 2, 
+               fill = "lightblue", alpha = 0.7) +  # Estilo del boxplot
+  labs(title = "Distribución de Precios según Estado de la Propiedad",
+       x = "Estado de la Propiedad", y = "Precio") +
+  theme_minimal() +
+  theme(legend.position = "none")
+
+# Crear una variable nueva que indique si la propiedad tiene características especiales
+valores_unicos <- unique(datos$Caracteristicas_especiales)
+num_grupos <- length(valores_unicos)
+colores <- rainbow(num_grupos)  
+ggplot(datos, aes(x = Precio_venta, fill = factor(Caracteristicas_especiales))) +
+  geom_density(alpha = 0.5, adjust = 1.5) +
+  labs(title = "Distribución de Precios según Características Especiales",
+       x = "Precio de Venta", y = "Densidad") +
+  scale_fill_manual(values = colores, 
+                    labels = valores_unicos) +
+  theme_minimal() +
+  theme(legend.title = element_blank())
+
+# Relación entre Precio y Tamaño de las propiedades
+ggplot(datos, aes(x = Tamano_m2, y = Precio_venta)) +
+  geom_point(alpha = 0.6, color = "blue") +
+  labs(title = "Relación entre Tamaño de la Propiedad y Precio de Venta",
+       x = "Tamaño (m2)", y = "Precio") +
+  theme_minimal()
+
+# 4. Ingeniería de Características
+# Creación de una nueva característica: Tiene_Mas_De_Tres_Habitaciones
+datos <- datos %>% mutate(Tiene_Mas_De_Tres_Habitaciones = ifelse(Num_habitaciones > 3, 1, 0))
+
+# Visualización de la nueva característica
+ggplot(datos, aes(x = factor(Tiene_Mas_De_Tres_Habitaciones), y = Precio_venta, fill = factor(Tiene_Mas_De_Tres_Habitaciones))) +
+  geom_boxplot(alpha = 0.7) +
+  labs(title = "Distribución de Precios según Número de Habitaciones (>3 o <=3)",
+       x = "Tiene más de 3 habitaciones", y = "Precio") +
+  scale_x_discrete(labels = c("0" = "No", "1" = "Sí")) +
+  theme_minimal()
+
+# 5. División de Datos
+# Dividir el conjunto de datos en entrenamiento y prueba (70%-30%)
+set.seed(123)  
+split <- sample.split(datos$Precio_venta, SplitRatio = 0.7)
+datos_entrenamiento <- subset(datos, split == TRUE)
+datos_prueba <- subset(datos, split == FALSE)
+
+n_entrenamiento <- nrow(datos_entrenamiento)
+n_prueba <- nrow(datos_prueba)
+
+cat("Número de observaciones en el conjunto de entrenamiento:", n_entrenamiento, "\n")
+cat("Número de observaciones en el conjunto de prueba:", n_prueba, "\n")
+
+df_division <- data.frame(
+  Conjunto = c("Entrenamiento", "Prueba"),
+  Observaciones = c(n_entrenamiento, n_prueba)
+)
+
+ggplot(df_division, aes(x = Conjunto, y = Observaciones, fill = Conjunto)) +
+  geom_bar(stat = "identity", position = "dodge") +
+  labs(title = "Distribución de Datos: Entrenamiento vs Prueba",
+       x = "Conjunto", y = "Número de Observaciones") +
+  theme_minimal() +
+  theme(legend.position = "none")
