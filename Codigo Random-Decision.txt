@@ -1,0 +1,65 @@
+install.packages("dplyr")           
+install.packages("rpart")            
+install.packages("randomForest")     
+install.packages("caret") 
+
+
+# Cargar las librerías necesarias
+library(dplyr)                       
+library(rpart)                       
+library(randomForest)                
+library(caret)                       
+
+
+# Cargar el archivo CSV en español
+transacciones <- read.csv("propiedades.csv")
+
+# Visualizar los primeros registros
+head(transacciones)
+
+# Crear una columna de ejemplo de 'fraud_flag'
+set.seed(123)
+transacciones$fraud_flag <- as.factor(sample(0:1, nrow(transacciones), replace = TRUE, prob = c(0.7, 0.3)))
+
+# Convertir las columnas categóricas en factores
+transacciones$fraud_flag <- as.factor(transacciones$fraud_flag)
+transacciones$Ubicacion <- as.factor(transacciones$Ubicacion)
+transacciones$Estado <- as.factor(transacciones$Estado)
+transacciones$Caracteristicas_especiales <- as.factor(transacciones$Caracteristicas_especiales)
+
+# Dividir el conjunto de datos en entrenamiento y prueba
+set.seed(123) 
+train_index <- createDataPartition(transacciones$fraud_flag, p = 0.7, list = FALSE)
+train_data <- transacciones[train_index, ]
+test_data <- transacciones[-train_index, ]
+
+# Crear el modelo de Árbol de Decisión
+modelo_arbol <- rpart(fraud_flag ~ Tamano_m2 + Num_habitaciones + 
+                        Estado + Caracteristicas_especiales + Precio_venta,
+                      data = train_data, method = "class")
+
+# Visualizar el Árbol de Decisión
+plot(modelo_arbol)
+text(modelo_arbol, pretty = 1)
+
+# Realizar predicciones con el modelo de Árbol de Decisión
+predicciones_arbol <- predict(modelo_arbol, test_data, type = "class")
+
+# Evaluar el modelo con una matriz de confusión
+confusionMatrix(predicciones_arbol, test_data$fraud_flag)
+
+# Crear el modelo de Random Forest
+set.seed(123)
+modelo_rf <- randomForest(fraud_flag ~ Tamano_m2 + Num_habitaciones + 
+                            Estado + Caracteristicas_especiales + Precio_venta,
+                          data = train_data, ntree = 100, mtry = 2)
+
+# Visualizar la importancia de las variables
+importance(modelo_rf)
+varImpPlot(modelo_rf)
+
+# Realizar predicciones con el modelo de Random Forest
+predicciones_rf <- predict(modelo_rf, test_data)
+
+# Evaluar el modelo con una matriz de confusión
+confusionMatrix(predicciones_rf, test_data$fraud_flag)
